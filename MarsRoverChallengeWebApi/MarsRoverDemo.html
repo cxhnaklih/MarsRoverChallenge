@@ -1,0 +1,411 @@
+﻿<!DOCTYPE html>
+<http-equiv ="PRAGMA" content="NO-CACHE" />
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Mars Rover Demo</title>
+    <link href="/Content/bootstrap.css" rel="stylesheet" />
+    <link href="/Content/site.css" rel="stylesheet" />
+    <script src="/Scripts/modernizr-2.6.2.js"></script>
+</head>
+<body>
+    <div class="navbar navbar-inverse navbar-fixed-top">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">Mars Explorer</a>
+            </div>
+            <div class="navbar-collapse collapse">
+                <ul class="nav navbar-nav">
+                    <li><a href="/home/index">Home</a></li>
+                    <li><a href="/Help">API</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="container">
+        <div class="well well-lg">
+            <h1>Mars Rover Demonstration</h1>
+            <h2>This web page demonstrates the use of a web api framework created to control a mars rover</h2>
+        </div>
+
+        <p />
+        <div class="well well-sm" id="instructions">
+            <ul>
+                <li><strong>First create or select a Plateau</strong></li>
+                <content>Plateaus define the space that the rover can operate within</content>
+                <li><strong>Next create or select your Rover</strong></li>
+                <content>Rovers are given a position on the plateau and a direction to face in </content>
+                <li><strong>Finally give the selected Rover Instructions.</strong></li>
+                <content>The rover takes 3 commands turn left, turn right and go forward. Use these commands to tell it where to go on the plateau. But try not to fall off!</content>
+
+            </ul>
+        </div>
+
+
+        <div class="well well-md" id="plateaus">
+
+            <div>
+                <h2>Rover Details</h2>
+            </div>
+            <div class="row form-group">
+                <label class="col-md-1 control-label" for="plateauItems">Plateau Name</label>
+                <div class="col-md-7">
+                    <select id="plateauItems" onchange="updateWidthAndHeight()" class="col-xs-1 form-control"></select>
+                    <label class="col-xs-2" id="selectedPlateauWidth">Width:</label>
+                    <label class="col-xs-2" id="selectedPlateauHeight">Length:</label>
+                </div>
+                <div class="col-md-4">
+                    <button type="button" class="btn btn-sm btn-default" onclick="createPlateau()">Create</button>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="deletePlateau(getSelectedPlateauId())">Delete</button>
+                </div>
+            </div>
+            <div class="row form-group">
+                <label class="col-md-1 control-label" for="roverItems">Rover Name</label>
+                <div class="col-md-7">
+                    <select id="roverItems" onchange="updateStartingPoint()" class="col-xs-1 form-control"></select>
+                    <label class="col-xs-2" id="selectedRoverX">Start X:</label>
+                    <label class="col-xs-2" id="selectedRoverY">Start Y:</label>
+                    <label class="col-xs-2" id="selectedRoverDir">Start Direction:</label>
+                </div>
+                <div class="col-md-4">
+                    <button type="button" class="btn btn-sm btn-default" onclick="createRover(getSelectedPlateauId())">Create</button>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteRover(getSelectedRoverId())">Delete</button>
+                </div>
+            </div>
+            <div class="row form-group">
+                <label class="col-md-1 control-label" for="roverInstructions">Rover Instructions</label>
+                <div class="col-md-7">
+                    <div>
+                        <input type="Text" id="roverInstructions" class="form-control" />
+                        <button type="button" class="btn btn-sm btn-default" onclick="executeRoverCommands(getSelectedPlateauId(), getSelectedRoverId(), $('#roverInstructions').val())">Run</button>
+                    </div>
+                    
+                </div>
+                <div class="col-md-4">
+                    <label class="col-xs-2" id="FinalRoverX">End X:</label>
+                    <label class="col-xs-2" id="FinalRoverY">End Y:</label>
+                    <label class="col-xs-2" id="FinalRoverDir">End Direction:</label>
+                </div>
+            </div>
+            
+        </div>
+        <div class="bs-example" id="bs-alert" style="display:none">
+            <div class="alert alert-danger alert-error">
+                
+                
+                <strong>Error!</strong> A problem has occurred while submitting your data.
+                <div id="ErrorMessage"></div>
+            </div>
+        </div>
+            
+
+
+    </div>
+
+    <script src="/Scripts/jquery-1.10.2.js"></script>
+    <script src="/Scripts/bootstrap.js"></script>
+    <script src="/Scripts/respond.js"></script>
+    <script>
+        var uriPlateau = 'api/marsrover/plateau';
+        var uriPlateauNameValidation = 'api/marsrover/plateauNameAvailable/';
+        var uriRoverAddition = '/rover';
+
+        function getPlateauUri(plateauId) {
+            return uriPlateau + '/' + plateauId
+
+        }
+
+        function getRoverUri(plateauId, roverId) {
+            return getPlateauUri(plateauId) + uriRoverAddition + '/' + roverId
+
+        }
+
+        function getSelectedPlateauId() {
+            return $('#plateauItems option:selected').val();
+        }
+
+        function getSelectedRoverId() {
+            return $('#roverItems option:selected').val();
+        }
+
+        function executeRoverCommands(plateauid,roverid, commands)
+        {
+            makeAlertVisible(false);
+           
+            if (commands.length > 0 && (!isNaN(roverid)) && (!isNaN(plateauid))) {
+                var uri = getRoverUri(plateauid, roverid) + '/' + commands;
+
+                $.ajax({
+                    url: uri,
+                    type: 'get',
+                    error: function (err) {
+                        executeCommandError(err.responseJSON);
+                    }
+                }
+                    )
+                   .done(function (data) {
+                       updateFinalDestination(data.X, data.Y, data.Direction);
+                       
+                   });
+            }
+        }
+
+        function executeCommandError(err)
+        {
+            
+            $('#ErrorMessage').html(err.Message);
+            makeAlertVisible(true);
+        }
+
+        function updateFinalDestination(x,y,direction)
+        {
+            makeAlertVisible(false);
+
+            
+                $('#FinalRoverX').html("End X :" + x);
+            
+                $('#FinalRoverY').html("End Y :" + y);
+            
+                $('#FinalRoverDir').html("End Direction :" + direction);
+        }
+
+        function createRover(plateauid) {
+            if (!isNaN(plateauid))
+            {
+                var width = $('#plateauItems option:selected').attr('xwidth');
+                var height = $('#plateauItems option:selected').attr('xheight');
+
+                name = uniqueNameInputBox("What is the rover name", $('#roverItems'));
+                x = boundedNumericInputBox("What is the starting X Coord", width,0 );
+                y = boundedNumericInputBox("What is the starting Y Coord", height,0);
+                dir = NSEWInputBox("What is the starting Direction (N/S/E/W)");
+
+
+                var rover = { Direction: dir, InitialX: x, InitialY: y, Name: name, PlateauId: plateauid };
+
+
+                $.ajax({
+                    type: "POST",
+                    data: JSON.stringify(rover),
+                    url: getRoverUri(plateauid, ""),
+                    contentType: "application/json"
+
+                }).done(function () { getAllRovers(plateauid) });
+
+                
+            }
+
+        }
+
+        function makeAlertVisible(visible)
+        {
+            if(visible == true)
+            {
+                $('#bs-alert').css('display', 'block');
+            }
+            else
+            {
+                $('#bs-alert').css('display', 'none');
+            }
+        }
+
+        function updateWidthAndHeight() {
+
+            var width = $('#plateauItems option:selected').attr('xwidth');
+            var height = $('#plateauItems option:selected').attr('xheight');
+            var plateauid = $('#plateauItems option:selected').val();
+
+            if (width)
+                $('#selectedPlateauWidth').html("Width :" + width);
+            if (height)
+                $('#selectedPlateauHeight').html("Height :" + height);
+            getAllRovers(plateauid);
+        }
+
+        function updateStartingPoint() {
+            var x = $('#roverItems option:selected').attr('xCoord');
+            var y = $('#roverItems option:selected').attr('yCoord');
+            var direction = $('#roverItems option:selected').attr('direction');
+
+
+            if (x)
+                $('#selectedRoverX').html("Start X :" + x);
+            if (y)
+                $('#selectedRoverY').html("Start Y :" + y);
+            if (direction)
+                $('#selectedRoverDir').html("Start Direction :" + direction);
+        }
+
+        $(document).ready(function () {
+            getAllPlateaus()
+
+
+        });
+
+        function getAllPlateaus() {
+            $.getJSON(uriPlateau)
+                .done(function (data) {
+                    
+                    populatePlateaus(data);
+                });
+
+
+        }
+
+        function boundedNumericInputBox(message, uboundary, lboundary)
+        {
+            result = numericInputBox(message);
+            message = message+ "\n CAN'T BE OUTSIDE OF THE BOUNDARY";
+            while((result > uboundary) || (result < lboundary) )
+            {
+                result = boundedNumericInputBox(message);
+            }   
+            return result;
+        }
+
+        function numericInputBox(message)
+        {
+            result = prompt(message,"");
+            message = message +'\n PLEASE NOTE MUST BE NUMERIC!'
+            while(isNaN(result))
+            {
+                result= prompt(message, "")
+            }
+            return result;
+        }
+
+        function NSEWInputBox(message) {
+            result = prompt(message, "");
+            message = message + '\n PLEASE NOTE MUST BE N/S/E/W!'
+            
+            var patt = new RegExp('[^NSEW]+')
+            
+
+            while (patt.test(result.toUpperCase())==true || result.length > 1) {
+                result = prompt(message, "")
+            }
+            return result;
+        }
+
+        function uniqueNameInputBox(message, mySelect) {
+            result = prompt(message,"");
+            
+            if (mySelect.children().length > 0)
+                {
+                for (i = 0; i < mySelect.children().length; i++)
+                {
+                    
+                    if(mySelect.children()[i].innerHTML.toUpperCase() == result.toUpperCase())
+                    {
+                        message = message + '\n PLEASE NOTE MUST BE A UNIQUE NAME!'
+                        return uniqueNameInputBox(message, mySelect)
+                    }
+                  
+                }
+            }
+            return result;
+        }
+
+
+        function getAllRovers(plateauId) {
+            if (!isNaN(plateauId))
+            {
+            $.getJSON(getRoverUri(plateauId, ""))
+                .done(function (data) {  
+                    populateRovers(data);
+                });
+            }
+        }
+
+        function deleteRover(roverId) {
+            var plateauid = getSelectedPlateauId();
+            var rover = { PlateauId: plateauid, MarsRoverId: roverId };
+
+
+            $.ajax({
+                type: "DELETE",
+                data: JSON.stringify(rover),
+                url: getRoverUri(plateauid, roverId),
+                contentType: "application/json"
+            });
+            $('#roverItems option:selected').remove();
+        }
+
+        function deletePlateau(plateauId) {
+            var plateau = { PlateauId: plateauId };
+            $.ajax({
+                type: "DELETE",
+                data: JSON.stringify(plateau),
+                url: getPlateauUri(plateauId),
+                contentType: "application/json"
+            });
+            $('#plateauItems option:selected').remove();
+            getAllRovers(getSelectedPlateauId());
+        }
+
+        function populatePlateaus(data) {
+            var mySelect = $('#plateauItems');
+            if(mySelect.children().length >0)
+                mySelect.find('option').remove().end();
+            $.each(data, function (i, item) {
+                var optionItem = $('<option></option>').val(data[i].PlateauId).html(data[i].Name);
+                optionItem.attr("xwidth", data[i].Width);
+                optionItem.attr("xheight", data[i].Length);
+                mySelect.append(optionItem);
+            })
+            mySelect.ready(updateWidthAndHeight);
+
+        }
+
+        function populateRovers(data) {
+            var mySelect = $('#roverItems');
+            if (mySelect.children().length > 0)
+                mySelect.find('option').remove().end();
+            $.each(data, function (i, item) {
+                var optionItem = $('<option></option>').val(data[i].MarsRoverId).html(data[i].Name);
+                optionItem.attr("xCoord", data[i].InitialX);
+                optionItem.attr("yCoord", data[i].InitialY);
+                optionItem.attr("direction", data[i].Direction);
+
+                mySelect.append(optionItem);
+            })
+            window.setTimeout(updateStartingPoint, 100);
+        }
+
+        
+
+
+        function createPlateau() {
+
+            name = uniqueNameInputBox("What is the plateau name", $('#plateauItems'));
+            width = numericInputBox("What is the width of the plateau");
+            length = numericInputBox("What is the length of the plateau");
+
+            /*var validationResult;
+            $.getJSON(uriPlateauNameValidation + name, function (data) {
+                JSON.stringify(data);
+            });*/
+
+
+            var plateau = { Width: width, Length: length, Name: name};
+
+
+            $.ajax({
+                type: "POST",
+                data: JSON.stringify(plateau),
+                url: uriPlateau,
+                contentType: "application/json"
+            }).done(function(){
+                getAllPlateaus();
+            });
+            
+        }
+
+
+    </script>
+</body>
+</html>
