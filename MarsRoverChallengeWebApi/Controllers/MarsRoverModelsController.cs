@@ -174,8 +174,17 @@ namespace MarsRoverChallengeWebApi.Controllers
                     {
                         rover = new MarsRover(plateau, roverModel.InitialX, roverModel.InitialY, dir);
                         MarsRoverPosition pos = rover.Commands.ParseCommand(successfulCommands);
-                        
-                        return BadRequest(string.Format("The Command to the Rover must Only Contain L, R or M and cannot leave the plateau. Your rover was last seen here at {0} having run these commands {1} " ,pos.ToString(),successfulCommands));
+                        string errorMessage = "";
+
+                        if(successfulCommands.Length > 0)
+                        {
+                            errorMessage = string.Format("The Command to the Rover must Only Contain L, R or M and cannot leave the plateau. Your rover was last seen here at {0} having run these commands {1} " ,pos.ToString(),successfulCommands);
+                         }
+                        else
+                        {
+                            errorMessage = string.Format("The Command to the Rover must Only Contain L, R or M and cannot leave the plateau. Your rover was last seen here at {0} having run no commands  ", pos.ToString());
+                        }
+                        return BadRequest(errorMessage);
                     }
 
                 }

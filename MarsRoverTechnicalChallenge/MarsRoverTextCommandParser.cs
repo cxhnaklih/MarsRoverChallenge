@@ -22,21 +22,17 @@ namespace MarsRoverTechnicalChallenge
         {
             bool success = true;
             int invalidCharsLocation = LocateInvalidCharacters(command);
-            while (invalidCharsLocation != 0 && command.Length >0)
+            if (invalidCharsLocation >-1 && command.Length >0)
             {
                 success = false;
-                
-                if(invalidCharsLocation > 1)
-                {
-                    command = command.Substring(0, invalidCharsLocation);
-                }
-
+                command = command.Substring(0, invalidCharsLocation);
                 invalidCharsLocation = LocateInvalidCharacters(command);
             }
 
             try
             {
-                ParseCommand(command);
+                if(command.Length > 0)
+                    ParseCommand(command);
                 
             }
             catch(Exception)
@@ -62,14 +58,14 @@ namespace MarsRoverTechnicalChallenge
             {
                 return rejectedCharacters.Match(command).Index;
             }
-            return 0;
+            return -1;
         }
 
         public MarsRoverPosition ParseCommand(string command)
         {
             int invalidCharsLocation = LocateInvalidCharacters(command);
 
-            if (invalidCharsLocation != 0) // if there are invalid characters in the command throw an argument exception
+            if (invalidCharsLocation > -1) // if there are invalid characters in the command throw an argument exception
             {
                 string errorPosition = command.Substring(0,invalidCharsLocation+1);
                 throw new ArgumentException("The Command to the Rover must Only Contain L, R or M \nYour Command Has an invalid character here "+errorPosition);
